@@ -349,8 +349,7 @@ const StudentSubmitPage: React.FC = () => {
 }
 ```
 
-これなら、`useEffect`は一回です。
-何より`Presentational`なコンポーネントに、ごちゃついたロジックが侵入していないのが気持ちいいです。
+これなら、`useEffect`は一回です。何より`Presentational`なコンポーネントに、ごちゃついたロジックが侵入していないのが気持ちいいです。
 
 コードをシンプルにする話はここまでで、以降はUXの話題に移っていきます。
 
@@ -397,8 +396,8 @@ function getHeight(element) {
 }
 ```
 
-この`WeakMap`を上手い具合に、APIを叩いたレスポンスの"結果を一時的に保存する用途"に使ったら、うまく問題が解決できそうです。
-というわけで、先ほどの`useAsync`をベースに、`useQuery`というカスタムフックを作ってみます。
+この`WeakMap`をAPIを叩いたレスポンスの"結果を一時的に保存する用途"に使ったら、うまく問題が解決できそうです。
+というわけで、先ほどの`useAsync`をベースに、`WeakMap`によるキャッシュの実装を加えた`useQuery`というカスタムフックを作ってみます。
 
 ```ts:useQuery.ts
 import { useState, useEffect, DependencyList } from "react";
@@ -461,9 +460,9 @@ const UniversityTablePage: React.FC = () => {
 + );
 ```
 
-`useEffect`の依存配列に`page`を渡してあげているので、最初のレンダリングと`page`の値が変わったタイミングで非同期処理が走ります。
+`useEffect`の依存配列に`page`を渡してあげているので、最初のレンダリングと`page`の値が変わったタイミングでAPIがコールされます。
 
-この例ではuseAsyncのkeyの引数に、`{ path:"/api/university/list", param: { page: ページ数}}`を渡してあげているので、`WeakMap`の挙動は次のようになります。
+この例では`useAsync`の`key`の引数に、`{ path:"/api/university/list", param: { page: ページ数}}`を渡してあげているので、`WeakMap`の挙動は次のようになります。
 
 ```typescript
 // 1ページ目読み込み中は、WeakMapの中身は空っぽ
@@ -479,7 +478,7 @@ const cache = new WeakMap([
 ]);
 ```
 
-この状態で、2ページ目から1ページ目に戻ると、`{ path: "/api/university/list", param: { page: 1 }}`というキーにレスポンスのデータが格納されているので、`cache.get(key)`の返す値は、1ページ目のデータになります。
+この状態で2ページ目から1ページ目に戻ると、`{ path: "/api/university/list", param: { page: 1 }}`というキーに1ページ目のデータが格納されているので、`cache.get(key)`の返す値は、1ページ目のデータになります。
 取得し直すまでもなく、データは、もう、既にそこにあるので、瞬時に表示されます。
 改善された動画がこちらです↓
 
@@ -510,7 +509,7 @@ APIのやり取りはシンプルになり、不要なローディングに別�
 
 あるページから別のページへ遷移すると、新しいデータ取得が走ります。しかし、このときブラウザは、前ページのデータ取得の処理を途中で止めることができるわけではありません。ちゃんとやろうとするなら、[AbortController](https://developer.mozilla.org/ja/docs/Web/API/AbortController)を使ってリクエストのキャンセル処理を書いてあげるべきです。
 
-また、何かしらのデータが更新された後など、逆に古いデータが表示されると困るケースが出てきます。「そのキャッシュ、古くなったんで、使わないでください」という操作ができるFunctionが必要です。これを仮に、`revalidateQueries`と呼んでみます。
+また、何かしらのデータが更新された後など、逆に古いデータが表示されると困るケースが出てきます。「そのキャッシュ、古くなったんで、使わないでください」といった操作ができるFunctionが必要です。このFunctionを仮に、`revalidateQueries`と呼んでみます。
 
 では、粘り強く頑張って、キャンセル処理と`revalidateQueries`を書いていきましょうか。
 でも実際それってすごくハードだし、自分で書いたコードなど所詮は汚いマーレ人です。
