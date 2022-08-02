@@ -50,7 +50,7 @@ const StudentSubmitForm: React.FC = () => {
         const res =  await fetch("/api/university/list", { method: "GET"})
         const data: University[] = await res.json()
         const optionsData = res.map(({ code, name}) => ({ universityCode: code, universityName: name }))
-        setOptions(op)
+        setOptions(optionsData)
         const defaultUniversityCode = res.find((uni) => uni.isDefault).code
         setUniversityCode(defaultUniversityCode)
         setLoading(false)
@@ -186,10 +186,10 @@ const StudentSubmitForm: React.FC<{universityData: University[]}> = ({ universit
 取得してきたデータをごにょごにょしてから`state`に入れるのではなく、取得してきたデータをそのまま`state`に突っ込んだ上でそれを加工するように変えるだけで、コードの責務がハッキリします。パフォーマンスの観点からは、`useMemo`を使うと良さそうです。
 
 ```diff ts: StudentSubmitForm.tsx
+- const options = universityData.map(({universityCode, universityName}) => ({ universityCode, universityName}))
 + const options = useMemo(() => {
 +  return universityData.map(({universityCode, universityName}) => ({ universityCode, universityName}))
 + }, [universityData])
-- const options = universityData.map(({universityCode, universityName}) => ({ universityCode, universityName}))
 ```
 
 APIとのやりとりの話とフォームの話は、混ぜない。
@@ -509,9 +509,9 @@ APIのやり取りはシンプルになり、不要なローディングに別�
 
 あるページから別のページへ遷移すると、新しいデータ取得が走ります。しかし、このときブラウザは、前ページのデータ取得の処理を途中で止めることができるわけではありません。ちゃんとやろうとするなら、[AbortController](https://developer.mozilla.org/ja/docs/Web/API/AbortController)を使ってリクエストのキャンセル処理を書いてあげるべきです。
 
-また、何かしらのデータが更新された後など、逆に古いデータが表示されると困るケースが出てきます。「そのキャッシュ、古くなったんで、使わないでください」といった操作ができるFunctionが必要です。このFunctionを仮に、`revalidateQueries`と呼んでみます。
+また、何かしらのデータが更新された後など、逆に古いデータが表示されると困るケースが出てきます。「そのキャッシュ、古くなったんで、使わないでください」といった操作ができるFunctionが必要です。このFunctionを仮に、`invalidateQueries`と呼んでみます。
 
-では、粘り強く頑張って、キャンセル処理と`revalidateQueries`を書いていきましょうか。
+では、粘り強く頑張って、キャンセル処理と`invalidateQueries`を書いていきましょうか。
 でも実際それってすごくハードだし、自分で書いたコードなど所詮は汚いマーレ人です。
 
 どこかに、良いライブラリが転がっていれば、それが一番安全で、かつ、手っ取り早いのですが...。
